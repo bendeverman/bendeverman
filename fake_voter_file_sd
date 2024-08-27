@@ -39,8 +39,8 @@ city_zip_mapping = {
 ethnicities = ["White", "Black or African American", "Hispanic or Latino", 
                "Asian", "Native American", "Pacific Islander", "Other", "Unknown"]
 
-# List of election years
-election_years = [2022, 2020, 2018, 2016, 2014, 2012, 2010, 2008]
+# List of election years including 2022
+election_years = [2022, 2020, 2018, 2016, 2014, 2012, 2010, 2008, 2006]
 
 # Function to generate a single voter record
 def generate_voter_record(voter_id):
@@ -53,7 +53,12 @@ def generate_voter_record(voter_id):
     
     # Generate random voting history based on recent election years
     voted_years = random.sample(election_years, k=random.randint(1, len(election_years)))
-    voting_history = ', '.join(map(str, sorted(voted_years)))
+    voting_history = {year: "Y" if year in voted_years else "" for year in election_years}
+    
+    # Generate support scores with decimal variation
+    democratic_support = round(random.uniform(0, 100), 1)
+    climate_support = round(random.uniform(0, 100), 1)
+    pro_choice_support = round(random.uniform(0, 100), 1)
     
     return {
         "Voter ID": f"{voter_id:04}",
@@ -64,13 +69,15 @@ def generate_voter_record(voter_id):
         "State": "SD",
         "ZIP Code": zip_code,
         "Date of Birth": fake.date_of_birth(minimum_age=18, maximum_age=100).strftime('%Y-%m-%d'),
-        "Gender": random.choice(["M", "F", "Unknown"]),
+        "Gender": random.choice(["M", "F", "U"]),  # Changed "Unknown" to "U"
+        "Ethnicity": random.choice(ethnicities),
         "Party Affiliation": random.choice(["Democrat", "Republican", "Independent", "Other"]),
         "Voter Status": random.choice(["Active", "Inactive"]),
         "Registration Date": fake.date_between(start_date='-20y', end_date='today').strftime('%Y-%m-%d'),
-        "Democratic Support Score": random.randint(0, 100),
-        "Ethnicity": random.choice(ethnicities),
-        "Voting History": voting_history
+        **{str(year): voting_history[year] for year in election_years},  # Ensure all years are included
+        "Democratic Support": democratic_support,
+        "Climate Support": climate_support,
+        "Pro-Choice Support": pro_choice_support
     }
 
 # File to write the data
@@ -79,17 +86,24 @@ output_file = 'south_dakota_voter_data.csv'
 # Number of records to generate
 num_records = 10000
 
+# Determine the fieldnames dynamically
+fieldnames = [
+    "Voter ID", "First Name", "Last Name", "Address", "City", "State",
+    "ZIP Code", "Date of Birth", "Gender", "Ethnicity",  # Ethnicity is placed after Gender
+    "Party Affiliation", "Voter Status", "Registration Date"
+] + [str(year) for year in election_years] + [
+    "Democratic Support", "Climate Support", "Pro-Choice Support"  # Added new support columns
+]
+
 # Write the data to the CSV file
 with open(output_file, mode='w', newline='') as file:
-    writer = csv.DictWriter(file, fieldnames=[
-        "Voter ID", "First Name", "Last Name", "Address", "City", "State",
-        "ZIP Code", "Date of Birth", "Gender", "Party Affiliation",
-        "Voter Status", "Registration Date", "Democratic Support Score", "Ethnicity",
-        "Voting History"
-    ])
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
     writer.writeheader()
     
     for i in range(1, num_records + 1):
-        writer.writerow(generate_voter_record(i))
+        record = generate_voter_record(i)
+        # Ensure all fields are included even if they are empty
+        row = {field: record.get(field, "") for field in fieldnames}
+        writer.writerow(row)
 
 print(f"{num_records} records have been written to {output_file}.")
