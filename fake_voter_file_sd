@@ -1,7 +1,7 @@
 import csv
 import random
 from faker import Faker
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Initialize Faker to generate fake data
 fake = Faker()
@@ -58,12 +58,25 @@ def generate_voter_record(voter_id):
     
     # Determine the earliest year the voter voted
     first_voted_year = min(voted_years) if voted_years else datetime.now().year
-
+    
+    # Generate a birthdate that is at least 18 years before the earliest voting year
+    earliest_birth_year = first_voted_year - 18
+    birth_date = fake.date_of_birth(minimum_age=18, maximum_age=100)
+    birth_date = datetime.combine(birth_date, datetime.min.time())
+    
+    while birth_date > datetime(earliest_birth_year, 1, 1):
+        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=100)
+        birth_date = datetime.combine(birth_date, datetime.min.time())
+    
     # Generate a valid registration date that is on or before the first voting year
     start_date = datetime(first_voted_year - 50, 1, 1)
     end_date = datetime(first_voted_year - 1, 12, 31)
     registration_date = fake.date_between(start_date=start_date, end_date=end_date).strftime('%Y-%m-%d')
     
+    # Ensure registration date is after birthdate
+    while birth_date >= datetime.strptime(registration_date, '%Y-%m-%d'):
+        registration_date = fake.date_between(start_date=start_date, end_date=end_date).strftime('%Y-%m-%d')
+
     # Generate support scores with decimal variation
     democratic_support = round(random.uniform(0, 100), 1)
     climate_support = round(random.uniform(0, 100), 1)
@@ -77,7 +90,7 @@ def generate_voter_record(voter_id):
         "City": city,
         "State": "SD",
         "ZIP Code": zip_code,
-        "Date of Birth": fake.date_of_birth(minimum_age=18, maximum_age=100).strftime('%Y-%m-%d'),
+        "Date of Birth": birth_date.strftime('%Y-%m-%d'),
         "Gender": random.choice(["M", "F", "U"]), 
         "Ethnicity": random.choice(ethnicities),
         "Party Affiliation": random.choice(["Democrat", "Republican", "Independent", "Other"]),
@@ -98,9 +111,9 @@ num_records = 10000
 # Determine the fieldnames dynamically
 fieldnames = [
     "Voter ID", "First Name", "Last Name", "Address", "City", "State",
-    "ZIP Code", "Date of Birth", "Gender", "Ethnicity", 
+    "ZIP Code", "Date of Birth", "Gender", "Ethnicity",  # Ethnicity is placed after Gender
     "Party Affiliation", "Voter Status", "Registration Date"
-] + [f"{year} General Election" for year in election_years] + [
+] + [f"{year} General Election" for year in election_years] + [  # Updated field names for voting history
     "Democratic Support", "Climate Support", "Pro-Choice Support"
 ]
 
