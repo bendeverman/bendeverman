@@ -1,0 +1,118 @@
+import csv
+import random
+from faker import Faker
+from datetime import datetime
+
+# Initialize Faker to generate fake data
+fake = Faker()
+
+# City to ZIP code mapping for the top 25 most populated cities in South Dakota
+city_zip_mapping = {
+    "Sioux Falls": ["57101", "57103", "57104", "57105", "57106"],
+    "Rapid City": ["57701", "57702"],
+    "Aberdeen": ["57401", "57402"],
+    "Brookings": ["57006"],
+    "Mitchell": ["57301"],
+    "Huron": ["57350"],
+    "Pierre": ["57501"],
+    "Yankton": ["57078"],
+    "Watertown": ["57201"],
+    "Brandon": ["57005"],
+    "Sturgis": ["57785"],
+    "Spearfish": ["57783"],
+    "Madison": ["57042"],
+    "Belle Fourche": ["57717"],
+    "Dell Rapids": ["57022"],
+    "Box Elder": ["57719"],
+    "Gregory": ["57533"],
+    "Sisseton": ["57262"],
+    "Custer": ["57730"],
+    "Martin": ["57551"],
+    "Platte": ["57369"],
+    "Mobridge": ["57601"],
+    "Lead": ["57754"],
+    "Eagle Butte": ["57625"],
+    "Elk Point": ["57025"],
+    "Rapid Valley": ["57703"]
+}
+
+# List of ethnicities
+ethnicities = ["White", "Black or African American", "Hispanic or Latino", 
+               "Asian", "Native American", "Pacific Islander", "Other", "Unknown"]
+
+# List of election years including 2022
+election_years = [2022, 2020, 2018, 2016, 2014, 2012, 2010, 2008, 2006]
+
+# Function to generate a single voter record
+def generate_voter_record(voter_id):
+    city = random.choice(list(city_zip_mapping.keys()))
+    zip_code = random.choice(city_zip_mapping[city])
+    
+    # Generate a consistent address number
+    address_number = random.randint(1, 9999)
+    address = f"{address_number} {fake.street_name()}"
+    
+    # Generate random voting history based on recent election years
+    voted_years = random.sample(election_years, k=random.randint(1, len(election_years)))
+    voting_history = {year: "Y" if year in voted_years else "" for year in election_years}
+    
+    # Determine the earliest year the voter voted
+    first_voted_year = min(voted_years) if voted_years else datetime.now().year
+
+    # Generate a valid registration date that is on or before the first voting year
+    start_date = datetime(first_voted_year - 50, 1, 1)
+    end_date = datetime(first_voted_year - 1, 12, 31)
+    registration_date = fake.date_between(start_date=start_date, end_date=end_date).strftime('%Y-%m-%d')
+    
+    # Generate support scores with decimal variation
+    democratic_support = round(random.uniform(0, 100), 1)
+    climate_support = round(random.uniform(0, 100), 1)
+    pro_choice_support = round(random.uniform(0, 100), 1)
+    
+    return {
+        "Voter ID": f"{voter_id:04}",
+        "First Name": fake.first_name(),
+        "Last Name": fake.last_name(),
+        "Address": address,
+        "City": city,
+        "State": "SD",
+        "ZIP Code": zip_code,
+        "Date of Birth": fake.date_of_birth(minimum_age=18, maximum_age=100).strftime('%Y-%m-%d'),
+        "Gender": random.choice(["M", "F", "U"]), 
+        "Ethnicity": random.choice(ethnicities),
+        "Party Affiliation": random.choice(["Democrat", "Republican", "Independent", "Other"]),
+        "Voter Status": random.choice(["Active", "Inactive"]),
+        "Registration Date": registration_date,
+        **{f"{year} General Election": voting_history[year] for year in election_years},
+        "Democratic Support": democratic_support,
+        "Climate Support": climate_support,
+        "Pro-Choice Support": pro_choice_support
+    }
+
+# File to write the data
+output_file = 'south_dakota_voter_data.csv'
+
+# Number of records to generate
+num_records = 10000
+
+# Determine the fieldnames dynamically
+fieldnames = [
+    "Voter ID", "First Name", "Last Name", "Address", "City", "State",
+    "ZIP Code", "Date of Birth", "Gender", "Ethnicity", 
+    "Party Affiliation", "Voter Status", "Registration Date"
+] + [f"{year} General Election" for year in election_years] + [
+    "Democratic Support", "Climate Support", "Pro-Choice Support"
+]
+
+# Write the data to the CSV file
+with open(output_file, mode='w', newline='') as file:
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    writer.writeheader()
+    
+    for i in range(1, num_records + 1):
+        record = generate_voter_record(i)
+        # Ensure all fields are included even if they are empty
+        row = {field: record.get(field, "") for field in fieldnames}
+        writer.writerow(row)
+
+print(f"{num_records} records have been written to {output_file}.")
